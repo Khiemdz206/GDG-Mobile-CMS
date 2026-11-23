@@ -1,3 +1,3 @@
-class AppConstant{
+class AppConstant {
   static String baseUrl = "baseUrlInApp";
 }

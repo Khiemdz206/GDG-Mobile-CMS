@@ -17,25 +17,20 @@ class AppColors {
 
   /// Nhóm màu phụ (Secondary Colors)
   /// Thường dùng cho các minh họa (Illustrations), Icon trong màn hình Onboarding hoặc trạng thái thông báo.
-  static const Color blue = Color(0xFF1F87FC);   // R:31, G:135, B:252
-  static const Color red = Color(0xFFFE2B25);    // R:254, G:43, B:37
+  static const Color blue = Color(0xFF1F87FC); // R:31, G:135, B:252
+  static const Color red = Color(0xFFFE2B25); // R:254, G:43, B:37
   static const Color yellow = Color(0xFFFFB900); // R:255, G:185, B:0
 
   /// Nhóm màu trung tính (Neutral Colors)
   /// [grey]: Sử dụng cho văn bản phụ (Secondary Text) hoặc nhãn (Labels).
-  static const Color grey = Color(0xFF666C73);       // R:102, G:108, B:115
+  static const Color grey = Color(0xFF666C73); // R:102, G:108, B:115
 
   /// [lightGrey]: Sử dụng cho đường kẻ phân cách (Dividers), Border hoặc nền yếu tố phụ.
-  static const Color lightGrey = Color(0xFFD9D9D9);  // R:217, G:217, B:217
+  static const Color lightGrey = Color(0xFFD9D9D9); // R:217, G:217, B:217
 
   /// [pageColors] cung cấp danh sách màu sắc tương ứng cho các trang trong PageView Onboarding.
   /// Giúp đồng bộ màu nền hoặc màu icon theo từng bước giới thiệu.
-  static const List<Color> pageColors = [
-    primary,
-    blue,
-    yellow,
-    red,
-  ];
+  static const List<Color> pageColors = [primary, blue, yellow, red];
 
   /// [white] - Màu trắng chuẩn hệ thống.
   /// Dùng làm nền cho Scaffold hoặc nền của các Card UI.

@@ -16,10 +16,10 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State <HomeScreen> createState() =>  _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class  _HomeScreenState extends State <HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> {
   /// Chỉ số của trang đang được chọn.
   int _selectedIndex = 0;
 
@@ -32,18 +32,20 @@ class  _HomeScreenState extends State <HomeScreen> {
   /// Danh sách các trang nội dung chính thuộc Feature Main.
   final List<Widget> _pages = [
     const HomePage(),
-    const Center(child: Text('Đây là trang Memories', style: TextStyle(fontSize: 24))),
+    const Center(
+      child: Text('Đây là trang Memories', style: TextStyle(fontSize: 24)),
+    ),
     const ProfileScreen(),
   ];
 
   @override
-  void initState(){
+  void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
   }
 
   @override
-  void dispose(){
+  void dispose() {
     _pageController.dispose();
     super.dispose();
   }
@@ -59,9 +61,9 @@ class  _HomeScreenState extends State <HomeScreen> {
 
     // Thực hiện hoạt ảnh trượt trang
     await _pageController.animateToPage(
-        index,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOutQuad
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutQuad,
     );
 
     _isAnimating = false;
@@ -71,10 +73,11 @@ class  _HomeScreenState extends State <HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+
       /// Sử dụng [PageView] để cho phép người dùng vuốt ngang giữa các tính năng.
       body: PageView(
         controller: _pageController,
-        onPageChanged: (index){
+        onPageChanged: (index) {
           // Chỉ cập nhật index nếu việc đổi trang đến từ thao tác vuốt tay (không phải do animateToPage).
           if (!_isAnimating) {
             setState(() {
@@ -88,26 +91,26 @@ class  _HomeScreenState extends State <HomeScreen> {
 
       /// Thanh điều hướng tùy chỉnh với thiết kế nổi (Floating style).
       bottomNavigationBar: Container(
-        margin: const EdgeInsets.only(left: 20,right: 20,bottom: 30),
+        margin: const EdgeInsets.only(left: 20, right: 20, bottom: 30),
         height: 70,
         decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(35),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
-                  blurRadius: 15,
-                  offset: const Offset(0, 5)
-              )
-            ]
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(35),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
         ),
         child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildNavItem(0, 'assets/images/home.png', 'Home'),
-              _buildNavItem(1, 'assets/images/photo.png', 'Memories'),
-              _buildNavItem(2, 'assets/images/user.png', 'Profile'),
-            ]
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildNavItem(0, 'assets/images/home.png', 'Home'),
+            _buildNavItem(1, 'assets/images/photo.png', 'Memories'),
+            _buildNavItem(2, 'assets/images/user.png', 'Profile'),
+          ],
         ),
       ),
     );

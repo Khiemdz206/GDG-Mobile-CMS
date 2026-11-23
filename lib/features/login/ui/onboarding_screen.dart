@@ -10,34 +10,6 @@ import 'package:gdgocms/core/theme/app_colors.dart';
 /// Description: Quản lý màn hình giới thiệu (Onboarding) dành cho người dùng mới.
 /// Sử dụng PageView để trình diễn các tính năng cốt lõi của ứng dụng thông qua hình ảnh minh họa SVG.
 
-/// [_OnboardingPage] là Widget thành phần hiển thị một trang minh họa riêng lẻ.
-///
-/// Thành phần này được thiết kế để tối ưu hóa việc hiển thị các tài nguyên [SvgPicture]
-/// với trạng thái chờ (loading) trong khi tải dữ liệu.
-class _OnboardingPage extends StatelessWidget {
-  /// Đường dẫn đến tệp tin SVG trong Assets.
-  final String assetPath;
-
-  const _OnboardingPage({super.key, required this.assetPath});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SvgPicture.asset(
-            assetPath,
-            height: 250,
-            fit: BoxFit.contain,
-            placeholderBuilder: (context) => const CircularProgressIndicator(),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// [OnboardingScreen] là màn hình chính điều phối luồng giới thiệu sản phẩm.
 ///
 /// Màn hình bao gồm một Logo ở đầu, một [PageView] ở giữa kèm Indicator động,

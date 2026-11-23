@@ -13,7 +13,6 @@ import 'package:gdgocms/core/theme/app_colors.dart';
 /// Giúp đảm bảo tính nhất quán về kích thước, trọng lượng (weight) và màu sắc
 /// của văn bản trên tất cả các màn hình trong dự án GDG CMS.
 class AppTextStyles {
-
   // --- HEADINGS (Độ dày 500) ---
   // Sử dụng cho các tiêu đề lớn, banner hoặc các điểm nhấn quan trọng nhất.
 
