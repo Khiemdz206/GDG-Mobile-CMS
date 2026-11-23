@@ -1,11 +1,8 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
-import 'package:gdgocms/core/network/api_service.dart';
+import 'package:gdgocms/core/error/error_messages.dart';
+import 'package:gdgocms/features/events/data/event.dart';
 import 'package:gdgocms/core/router/app_router.dart';
 import 'package:gdgocms/core/theme/app_colors.dart';
 import 'package:gdgocms/core/theme/app_fonts.dart';
@@ -18,8 +15,7 @@ class UpcomingEventsScreen extends StatefulWidget {
 }
 
 class _UpcomingEventsScreenState extends State<UpcomingEventsScreen> {
-  final BaseApiService _apiService = BaseApiService();
-  final AuthService _authService = AuthService();
+  final EventRepository _repository = EventRepository();
   List<Map<String, dynamic>> _events = <Map<String, dynamic>>[];
   bool _isLoading = true;
   String? _errorMessage;
@@ -38,207 +34,19 @@ class _UpcomingEventsScreenState extends State<UpcomingEventsScreen> {
     });
 
     try {
-      http.Response response = await _getEventsResponse();
-
-      if (response.statusCode == 401 || response.statusCode == 403) {
-        debugPrint(
-          'Token expired/invalid (Status: ${response.statusCode}), attempting refresh...',
-        );
-
-        final String? refreshedToken = await _authService.refreshToken();
-
-        if (refreshedToken != null) {
-          // Thử gọi lại API một lần nữa với token mới
-          response = await _getEventsResponse();
-        } else {
-          // Nếu không refresh được, yêu cầu người dùng đăng nhập lại
-          setState(() {
-            _errorMessage = "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.";
-            _isLoading = false;
-          });
-          return;
-        }
-      }
-
-      if (response.statusCode != 200) {
-        if (!mounted) {
-          return;
-        }
-        setState(() {
-          _isLoading = false;
-          _errorMessage =
-              'Không thể tải dữ liệu sự kiện (${response.statusCode}).';
-        });
-        return;
-      }
-
-      final dynamic decoded = jsonDecode(response.body);
-      final List<Map<String, dynamic>> mapped = _extractEventsList(
-        decoded,
-      ).map(_mapEvent).toList();
-
-      if (!mounted) {
-        return;
-      }
-
+      final List<Event> events = await _repository.fetchUpcoming();
+      if (!mounted) return;
       setState(() {
-        _events = mapped;
+        _events = events.map((e) => e.toViewData()).toList();
         _isLoading = false;
       });
-    } catch (e) {
-      if (!mounted) {
-        return;
-      }
+    } catch (error) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Mất kết nối hoặc có lỗi xảy ra. Vui lòng thử lại.';
+        _errorMessage = errorMessage(error);
       });
     }
-  }
-
-  Future<http.Response> _getEventsResponse() async {
-    final Map<String, String> headers = await _apiService.getHeaders();
-    return http.get(
-      Uri.parse('${AuthService.baseUrl}/events'),
-      headers: headers,
-    );
-  }
-
-  List<Map<String, dynamic>> _extractEventsList(dynamic decoded) {
-    if (decoded is List) {
-      return decoded
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
-    }
-
-    if (decoded is Map<String, dynamic>) {
-      final dynamic events =
-          decoded['events'] ?? decoded['data'] ?? decoded['items'];
-      if (events is List) {
-        return events
-            .whereType<Map>()
-            .map((e) => Map<String, dynamic>.from(e))
-            .toList();
-      }
-    }
-
-    return <Map<String, dynamic>>[];
-  }
-
-  Map<String, dynamic> _mapEvent(Map<String, dynamic> raw) {
-    final String id = _readEventId(raw);
-    final String title =
-        _firstNonEmptyString(raw, const ['title']) ?? 'Untitled Event';
-    final String description =
-        _firstNonEmptyString(raw, const [
-          'content',
-          'description',
-          'details',
-          'summary',
-        ]) ??
-        '';
-    final String author =
-        _firstNonEmptyString(raw, const ['author', 'username']) ?? 'Ẩn danh';
-    final int vote = _readVote(raw['vote']);
-    final String time = _buildTime(raw);
-
-    return <String, dynamic>{
-      'id': id.isNotEmpty ? id : title,
-      'title': title,
-      'time': time,
-      'author': author,
-      'vote': vote,
-      'description': description,
-      'notifyTo': raw['notifyTo'],
-      'confirmed': raw['confirmed'],
-    };
-  }
-
-  String _buildTime(Map<String, dynamic> raw) {
-    final String? createdAt = _formatCreatedAt(raw['createdAt']);
-    if (createdAt != null) {
-      return createdAt;
-    }
-
-    final String? timeText = _firstNonEmptyString(raw, const [
-      'time',
-      'dateTime',
-      'startAt',
-      'startsAt',
-      'eventTime',
-    ]);
-    if (timeText != null) {
-      return timeText;
-    }
-
-    final String? date = _firstNonEmptyString(raw, const [
-      'date',
-      'startDate',
-      'eventDate',
-    ]);
-    final String? clock = _firstNonEmptyString(raw, const [
-      'startTime',
-      'hour',
-    ]);
-    if (date != null && clock != null) {
-      return '$date - $clock';
-    }
-    return date ?? '';
-  }
-
-  String _readEventId(Map<String, dynamic> raw) {
-    final dynamic idRaw = raw['_id'] ?? raw['id'];
-    if (idRaw is Map && idRaw['\$oid'] != null) {
-      return idRaw['\$oid'].toString();
-    }
-    return idRaw?.toString() ?? '';
-  }
-
-  int _readVote(dynamic voteRaw) {
-    if (voteRaw is int) {
-      return voteRaw;
-    }
-    if (voteRaw is String) {
-      return int.tryParse(voteRaw) ?? 0;
-    }
-    return 0;
-  }
-
-  String? _formatCreatedAt(dynamic createdAtRaw) {
-    String? isoString;
-    if (createdAtRaw is String) {
-      isoString = createdAtRaw;
-    } else if (createdAtRaw is Map && createdAtRaw['\$date'] != null) {
-      isoString = createdAtRaw['\$date'].toString();
-    }
-
-    if (isoString == null || isoString.isEmpty) {
-      return null;
-    }
-
-    final DateTime? parsed = DateTime.tryParse(isoString);
-    if (parsed == null) {
-      return null;
-    }
-    final DateTime local = parsed.toLocal();
-    return DateFormat("'Ngày' dd 'tháng' MM, yyyy").format(local);
-  }
-
-  String? _firstNonEmptyString(Map<String, dynamic> raw, List<String> keys) {
-    for (final String key in keys) {
-      final dynamic value = raw[key];
-      if (value is String && value.trim().isNotEmpty) {
-        return value.trim();
-      }
-      if (value != null && value is! String) {
-        final String normalized = value.toString().trim();
-        if (normalized.isNotEmpty) {
-          return normalized;
-        }
-      }
-    }
-    return null;
   }
 
   void _onSwipe(int index) {

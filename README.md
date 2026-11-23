@@ -2,8 +2,8 @@
 
 App Flutter cho thành viên CLB: đăng ký/đăng nhập, xem lịch và sự kiện sắp tới, xem và sửa hồ sơ.
 
-- **App** (repo này): Flutter, chạy Android và iOS.
-- **Backend**: API tại `https://gdg-cms.vercel.app`, **không nằm trong repo này**. Danh sách endpoint xem [docs/GDG_API.md](docs/GDG_API.md).
+- **App**: Flutter, chạy Android và iOS.
+- **Backend**: [Supabase](https://supabase.com) (đăng nhập + database). Cấu trúc database nằm trong `supabase/migrations/`. Cách tạo project và nối app: [docs/SUPABASE.md](docs/SUPABASE.md).
 
 ## 1. Chạy app lần đầu
 
@@ -26,13 +26,17 @@ flutter pub get
 
 Mong đợi: báo `Got dependencies!`, `git status` không thấy `pubspec.lock` bị sửa.
 
-**Bước 3: Chạy app.** Mở emulator Android (hoặc cắm máy thật đã bật USB debugging), rồi:
+**Bước 3: Điền cấu hình Supabase.** Copy `env.example.json` thành `env.json`, điền URL và publishable key do người quản lý gửi. Chi tiết: [docs/SUPABASE.md](docs/SUPABASE.md#2-nối-app-với-supabase-mỗi-thành-viên-làm-trên-máy-mình). Không commit `env.json`.
+
+**Bước 4: Chạy app.** Mở emulator Android (hoặc cắm máy thật đã bật USB debugging), rồi:
 
 ```bash
-flutter run
+flutter run --dart-define-from-file=env.json
 ```
 
-Mong đợi: app mở màn Onboarding. Đăng ký một tài khoản test để vào Home.
+Trong VS Code chỉ cần bấm F5 (cấu hình **GDG CMS** đã truyền sẵn `env.json`).
+
+Mong đợi: app mở màn Onboarding. Đăng ký một tài khoản test bằng email để vào Home.
 
 **Lỗi thường gặp**
 
@@ -40,7 +44,8 @@ Mong đợi: app mở màn Onboarding. Đăng ký một tài khoản test để 
 |---|---|
 | `The current Dart SDK version is ...` | Flutter cũ hơn bản trong `.fvmrc`; cài đúng bản |
 | `No connected devices` | Mở emulator trước, kiểm tra bằng `flutter devices` |
-| Đăng nhập luôn báo sai mật khẩu | Kiểm tra mạng và xem backend còn chạy không: mở `https://gdg-cms.vercel.app/posts` trên trình duyệt |
+| App báo "Thiếu cấu hình Supabase" | Chưa tạo `env.json` hoặc chạy thiếu `--dart-define-from-file=env.json` |
+| Đăng ký xong không vào được app | Project Supabase đang bật xác minh email: mở email, bấm link, rồi đăng nhập |
 
 ## 2. Trước khi mở Pull Request
 
@@ -65,23 +70,26 @@ Quy trình nhánh, PR và commit message: [docs/BRANCHING_POLICY.md](docs/BRANCH
 lib/
 ├── main.dart                 # Khởi động app, chọn màn đầu tiên theo trạng thái đăng nhập
 ├── core/
-│   ├── network/api_service.dart   # Gọi API: AuthService, BaseApiService, UserService
+│   ├── config/app_config.dart     # Đọc và kiểm tra cấu hình Supabase
+│   ├── network/                   # AuthService (đăng nhập), ProfileService (hồ sơ)
 │   ├── router/app_router.dart     # Danh sách route (go_router)
 │   ├── theme/                     # Màu, font chữ
-│   └── error/                     # Kiểu lỗi dùng chung
+│   └── error/error_messages.dart  # Đổi lỗi Supabase/mạng thành câu tiếng Việt
 └── features/
     ├── login/ui/             # Onboarding, đăng nhập, đăng ký
     ├── main/ui/home/         # Khung chính 3 tab và trang chủ (lịch)
     ├── main/ui/profile/      # Hồ sơ, sửa hồ sơ, đăng xuất
+    ├── events/data/          # Model Event và EventRepository (đọc bảng events)
     ├── events/               # Danh sách, thẻ vuốt và chi tiết sự kiện
     └── post/                 # Mới có khung, chưa dùng
+supabase/migrations/          # Cấu trúc database và quyền (RLS)
 test/                         # Test tự động (chạy bằng flutter test)
 ```
 
-Thư viện chính: `go_router` (điều hướng), `http` (gọi API), `shared_preferences` (lưu phiên đăng nhập), `table_calendar`, `flutter_svg`, `google_fonts`.
+Thư viện chính: `supabase_flutter` (đăng nhập, database), `go_router` (điều hướng), `table_calendar`, `flutter_svg`, `google_fonts`.
 
 ## 4. Viết test
 
-Test nằm trong `test/`, cấu trúc thư mục giống `lib/`. Ví dụ [test/core/auth_service_test.dart](test/core/auth_service_test.dart) dùng `MockClient` của package `http` làm server giả, nên test không gọi backend thật và chạy được cả khi mất mạng.
+Test nằm trong `test/`, cấu trúc thư mục giống `lib/`. Test không gọi Supabase thật: tách phần logic (đọc dữ liệu trả về, kiểm tra cấu hình, đổi lỗi thành thông báo) ra hàm riêng rồi test hàm đó. Ví dụ [test/features/events/event_test.dart](test/features/events/event_test.dart) kiểm tra `Event.fromRow` với dữ liệu giống Supabase trả về.
 
 Test phải gọi code thật của app (parse dữ liệu, xử lý lỗi, lưu token). Không viết test chỉ so một hằng số với chính nó.

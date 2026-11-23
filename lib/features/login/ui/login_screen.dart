@@ -4,7 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:gdgocms/core/router/app_router.dart';
 import 'package:gdgocms/core/theme/app_colors.dart';
 import 'package:gdgocms/core/theme/app_fonts.dart';
-import 'package:gdgocms/core/network/api_service.dart';
+import 'package:gdgocms/core/error/error_messages.dart';
+import 'package:gdgocms/core/network/auth_service.dart';
 
 /// login_screen.dart
 /// Layer: Presentation
@@ -24,8 +25,8 @@ class SignInScreen extends StatefulWidget {
 }
 
 class _SignInScreenState extends State<SignInScreen> {
-  /// Điều khiển dữ liệu nhập vào cho trường Username và Password.
-  final _usernameController = TextEditingController();
+  /// Điều khiển dữ liệu nhập vào cho trường Email và Password.
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   /// Trạng thái hiển thị mật khẩu (true: ẩn, false: hiện).
@@ -49,22 +50,30 @@ class _SignInScreenState extends State<SignInScreen> {
       _isLoading = true;
     });
 
-    final success = await AuthService().login(
-      _usernameController.text,
-      _passwordController.text,
-    );
+    String? failure;
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.isEmpty) {
+      failure = 'Vui lòng nhập email và mật khẩu.';
+    } else {
+      try {
+        await AuthService().login(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      } catch (error) {
+        failure = errorMessage(error);
+      }
+    }
 
     if (!mounted) return;
-    setState(() => _isLoading = false);
+    setState(() {
+      _isLoading = false;
+      _errorMessage = failure;
+    });
 
-    if (success) {
+    if (failure == null) {
       // Đăng nhập thành công, thay thế màn hình hiện tại bằng trang chủ.
       context.go(AppRoutes.home);
-    } else {
-      // Cập nhật thông báo lỗi để hiển thị lên UI.
-      setState(() {
-        _errorMessage = "Oops! Incorrect password. Try again!";
-      });
     }
   }
 
@@ -131,12 +140,14 @@ class _SignInScreenState extends State<SignInScreen> {
 
                         SizedBox(height: safeHeight * 0.04),
 
-                        _buildInputLabel("ID/Username", safeHeight),
+                        _buildInputLabel("Email", safeHeight),
                         const SizedBox(height: 8),
                         TextField(
-                          controller: _usernameController,
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          autocorrect: false,
                           decoration: const InputDecoration(
-                            hintText: "Your ID/Username",
+                            hintText: "example@email.com",
                           ),
                         ),
 

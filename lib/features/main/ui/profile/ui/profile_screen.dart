@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:gdgocms/core/network/api_service.dart';
+import 'package:gdgocms/core/error/error_messages.dart';
+import 'package:gdgocms/core/network/auth_service.dart';
+import 'package:gdgocms/core/network/profile_service.dart';
 import 'package:gdgocms/core/router/app_router.dart';
 import 'package:gdgocms/core/theme/app_colors.dart';
 import 'package:gdgocms/core/theme/app_fonts.dart';
@@ -15,7 +17,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final AuthService _authService = AuthService();
-  final UserService _userService = UserService();
+  final ProfileService _profileService = ProfileService();
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -35,29 +37,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      final Map<String, dynamic>? user = await _userService.fetchCurrentUser();
-      if (!mounted) {
-        return;
-      }
-      if (user == null) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Không thể tải thông tin tài khoản.';
-        });
-        return;
-      }
-
+      final Profile profile = await _profileService.fetchMyProfile();
+      if (!mounted) return;
       setState(() {
-        _profile = user;
+        _profile = profile.toViewData();
         _isLoading = false;
       });
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
+    } catch (error) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Mất kết nối hoặc có lỗi xảy ra. Vui lòng thử lại.';
+        _errorMessage = errorMessage(error);
       });
     }
   }
@@ -99,9 +89,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final TextEditingController lastNameController = TextEditingController(
       text: (_profile['lastName'] ?? '').toString(),
     );
-    final TextEditingController emailController = TextEditingController(
-      text: (_profile['email'] ?? '').toString(),
-    );
     String? dialogError;
     const OutlineInputBorder border = OutlineInputBorder(
       borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -138,17 +125,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         focusedBorder: border,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: border,
-                        enabledBorder: border,
-                        focusedBorder: border,
-                      ),
-                    ),
                     if (dialogError != null) ...[
                       const SizedBox(height: 12),
                       Text(
@@ -168,10 +144,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onPressed: _isSaving
                       ? null
                       : () {
-                          final String email = emailController.text.trim();
-                          if (email.isEmpty || !email.contains('@')) {
+                          final bool tooLong =
+                              firstNameController.text.trim().length > 50 ||
+                              lastNameController.text.trim().length > 50;
+                          if (tooLong) {
                             setDialogState(() {
-                              dialogError = 'Email không hợp lệ.';
+                              dialogError =
+                                  'Họ và tên mỗi phần tối đa 50 ký tự.';
                             });
                             return;
                           }
@@ -200,11 +179,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _isSaving = true;
     });
 
-    final Map<String, dynamic>? updated = await _userService.updateCurrentUser(
-      firstName: firstNameController.text,
-      lastName: lastNameController.text,
-      email: emailController.text,
-    );
+    String? failure;
+    try {
+      final Profile updated = await _profileService.updateMyName(
+        firstName: firstNameController.text,
+        lastName: lastNameController.text,
+      );
+      if (mounted) {
+        setState(() => _profile = updated.toViewData());
+      }
+    } catch (error) {
+      failure = errorMessage(error);
+    }
 
     if (!mounted) {
       return;
@@ -214,23 +200,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _isSaving = false;
     });
 
-    if (updated == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không thể cập nhật thông tin.'),
-          backgroundColor: AppColors.red,
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      _profile = <String, dynamic>{..._profile, ...updated};
-    });
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Cập nhật hồ sơ thành công.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      failure == null
+          ? const SnackBar(content: Text('Cập nhật hồ sơ thành công.'))
+          : SnackBar(content: Text(failure), backgroundColor: AppColors.red),
+    );
   }
 
   String _displayName() {
