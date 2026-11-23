@@ -4,7 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:gdgocms/core/router/app_router.dart';
 import 'package:gdgocms/core/theme/app_colors.dart';
 import 'package:gdgocms/core/theme/app_fonts.dart';
-import 'package:gdgocms/core/network/api_service.dart';
+import 'package:gdgocms/core/error/error_messages.dart';
+import 'package:gdgocms/core/network/auth_service.dart';
 
 /// register_screen.dart
 /// Layer: Presentation
@@ -51,11 +52,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// Sau đó gọi API [AuthService.register] và điều hướng về [HomeScreen] nếu thành công.
   void _handleRegister() async {
     // 1. Validate: Kiểm tra các trường bắt buộc
-    if (_usernameController.text.isEmpty ||
+    if (_usernameController.text.trim().isEmpty ||
+        _emailController.text.trim().isEmpty ||
         _passwordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty) {
       setState(
         () => _errorMessage = "Vui lòng nhập đầy đủ các trường bắt buộc.",
+      );
+      return;
+    }
+
+    // Cùng quy tắc với ràng buộc username trong database (bảng profiles).
+    if (!RegExp(
+      r'^[A-Za-z0-9_.]{3,30}$',
+    ).hasMatch(_usernameController.text.trim())) {
+      setState(
+        () => _errorMessage =
+            "Username 3–30 ký tự, chỉ gồm chữ không dấu, số, dấu _ hoặc dấu chấm.",
       );
       return;
     }
@@ -72,25 +85,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     // Gọi API đăng ký qua Core Layer
-    final success = await AuthService().register(
-      username: _usernameController.text.trim(),
-      password: _passwordController.text.trim(),
-      email: _emailController.text.trim(),
-      firstName: _firstNameController.text.trim(),
-      lastName: _lastNameController.text.trim(),
-    );
+    SignUpResult? result;
+    String? failure;
+    try {
+      // Mật khẩu giữ nguyên, không trim, để lúc đăng nhập gõ đúng như lúc đăng ký.
+      result = await AuthService().register(
+        username: _usernameController.text,
+        password: _passwordController.text,
+        email: _emailController.text,
+        firstName: _firstNameController.text,
+        lastName: _lastNameController.text,
+      );
+    } catch (error) {
+      failure = errorMessage(error);
+    }
 
     if (!mounted) return;
-    setState(() => _isLoading = false);
+    setState(() {
+      _isLoading = false;
+      _errorMessage = failure;
+    });
 
-    if (success) {
+    if (result == SignUpResult.signedIn) {
       // Đăng ký thành công, xóa lịch sử và vào thẳng trang chủ
       context.go(AppRoutes.home);
-    } else {
-      // Thông báo lỗi nghiệp vụ từ phía Server (trùng user/email)
-      setState(() {
-        _errorMessage = "Đăng ký thất bại. Tài khoản hoặc Email đã tồn tại.";
-      });
+    } else if (result == SignUpResult.needsEmailConfirmation) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Đã tạo tài khoản. Mở email và bấm link xác minh, rồi đăng nhập.',
+          ),
+        ),
+      );
+      context.go(AppRoutes.login);
     }
   }
 

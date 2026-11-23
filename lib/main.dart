@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:gdgocms/core/config/app_config.dart';
 import 'package:gdgocms/core/router/app_router.dart';
 import 'package:gdgocms/core/theme/app_colors.dart';
 import 'package:gdgocms/core/theme/app_fonts.dart';
@@ -16,24 +17,55 @@ import 'package:gdgocms/core/theme/app_fonts.dart';
 ///
 /// Thực hiện các tác vụ chuẩn bị:
 /// 1. Khởi tạo binding cho Flutter Framework.
-/// 2. Truy xuất [SharedPreferences] để kiểm tra `accessToken`.
-/// 3. Quyết định route khởi đầu dựa trên trạng thái xác thực.
-void main() async {
+/// 2. Đọc cấu hình và kết nối Supabase (SDK tự khôi phục phiên đăng nhập đã lưu).
+/// 3. Quyết định route khởi đầu dựa trên trạng thái đăng nhập.
+Future<void> main() async {
   // Đảm bảo các dịch vụ của Flutter (như MethodChannel) đã sẵn sàng trước khi gọi async khác.
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Kiểm tra phiên đăng nhập hiện tại từ bộ nhớ cục bộ.
-  final prefs = await SharedPreferences.getInstance();
-  final String? accessToken = prefs.getString('accessToken');
+  final AppConfig config;
+  try {
+    config = AppConfig.fromEnvironment();
+  } on AppConfigException catch (error) {
+    // Thiếu/sai cấu hình: hiện hướng dẫn thay vì crash màn hình trắng.
+    runApp(_ConfigErrorApp(message: error.message));
+    return;
+  }
 
-  // Điều hướng thông minh:
-  // - Đã có token: Chuyển thẳng vào Home.
-  // - Chưa có/Token rỗng: Hiển thị onboarding.
-  final String initialLocation = (accessToken != null && accessToken.isNotEmpty)
+  await Supabase.initialize(
+    url: config.supabaseUrl,
+    publishableKey: config.supabaseKey,
+  );
+
+  // Điều hướng:
+  // - Đã đăng nhập: chuyển thẳng vào Home.
+  // - Chưa đăng nhập: hiển thị onboarding.
+  final bool signedIn = Supabase.instance.client.auth.currentSession != null;
+  final String initialLocation = signedIn
       ? AppRoutes.home
       : AppRoutes.onboarding;
 
   runApp(CMSApp(initialLocation: initialLocation));
+}
+
+class _ConfigErrorApp extends StatelessWidget {
+  final String message;
+  const _ConfigErrorApp({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Center(child: Text(message, textAlign: TextAlign.center)),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// [CMSApp] là Widget gốc cấu hình toàn bộ ứng dụng.

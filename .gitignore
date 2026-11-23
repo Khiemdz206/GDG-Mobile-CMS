@@ -46,3 +46,7 @@ app.*.map.json
 
 # FVM Version Cache
 .fvm/
+# Cấu hình Supabase trên máy (copy từ env.example.json)
+env.json
+.env
+.env.*

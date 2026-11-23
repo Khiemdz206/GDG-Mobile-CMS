@@ -13,7 +13,7 @@
 ## Ảnh hưởng tới phần khác
 
 - Có đổi `lib/core/` (network, router, theme) không? Ai cần biết?
-- Có gọi endpoint API mới không? Đã có trong `docs/GDG_API.md` chưa?
+- Có đổi bảng/quyền Supabase không? Đã thêm file migration mới trong `supabase/migrations/` chưa?
 
 ## Tự kiểm tra
 
