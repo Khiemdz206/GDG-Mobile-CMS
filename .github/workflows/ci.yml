@@ -24,11 +24,11 @@ jobs:
       - uses: actions/checkout@v5
 
       # Gradle 8.10 của dự án chưa chạy được trên Java 25 (mặc định của runner),
-      # nên cố định Java 17 như Android Studio đang dùng.
+      # nên cố định Java 21 (bản JDK đi kèm Android Studio, cũng là bản máy dev đang dùng).
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       # Phiên bản Flutter lấy từ .fvmrc để CI và máy dev dùng cùng một bản.
       - name: Read Flutter version
